@@ -9,29 +9,6 @@ The project covers:
 - ☁️ Streamlit Cloud deployment
 
 ---
-
-## 📂 Project Structure
-
-car-price-prediction/
-├── app.py 
-├── requirements.txt 
-├── README.md
-│
-├── datasets/
-│  └── sampled_raw_data.csv 
-│ 
-├── models/
-│ ├── model.json 
-│ ├── preprocessor.pkl  
-│ └── feature_names.pkl 
-│
-└── notebooks/
-├── Cars_prediction.ipynb # 
-└── Exploratory_analysis.ipynb 
-
-
----
-
 ## ⚙️ Installation & Setup
 ```bash
 1️⃣ Clone the Repository
