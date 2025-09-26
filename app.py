@@ -7,7 +7,17 @@ import joblib
 import numpy as np
 @st.cache_data
 def load_data():
-    return pd.read_csv("datasets/raw_data_sampled.csv", low_memory=False)
+    file_id = "1aBcD3EfGhIjKlMnOpQrStUvWxYz"
+    url = f"https://drive.google.com/uc?id={file_id}"
+
+    st.info("📂 Loading dataset from Google Drive...")
+    df = pd.read_csv(url, low_memory=False)
+
+    # Clean up columns
+    df.columns = df.columns.str.lower()
+    df = df.loc[:, ~df.columns.str.contains('^unnamed')]
+    return df
+  
 df_raw = load_data()
 # Loading Model and Metadata
 model = xgb.Booster()
