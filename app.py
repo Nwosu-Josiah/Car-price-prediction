@@ -15,10 +15,9 @@ model.load_model("models/model.json")
 preprocessor = joblib.load("models/preprocessor.pkl")
 feature_names = list(joblib.load("models/feature_names.pkl"))
 
-
+df_raw = df_raw.drop(columns=["Unnamed: 0"], errors='ignore')
 st.title("🚗 Car Price Prediction Dashboard")
 st.write("Pick your car details to get a predicted price and explanation.")
-
 
 # User Inputs
 
