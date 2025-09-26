@@ -7,13 +7,13 @@ import joblib
 import numpy as np
 @st.cache_data
 def load_data():
-    return pd.read_csv("raw_data_sampled.csv", low_memory=False)
+    return pd.read_csv("datasets/raw_data_sampled.csv", low_memory=False)
 df_raw = load_data()
 # Loading Model and Metadata
 model = xgb.Booster()
-model.load_model("model.json")
-preprocessor = joblib.load("preprocessor.pkl")
-feature_names = list(joblib.load("feature_names.pkl"))
+model.load_model("models/model.json")
+preprocessor = joblib.load("models/preprocessor.pkl")
+feature_names = list(joblib.load("models/feature_names.pkl"))
 
 
 st.title("🚗 Car Price Prediction Dashboard")
