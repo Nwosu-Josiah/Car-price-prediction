@@ -33,10 +33,9 @@ car-price-prediction/
 ---
 
 ## ⚙️ Installation & Setup
-
-### 1️⃣ Clone the Repository
-
 ```bash
+1️⃣ Clone the Repository
+
 git clone https://github.com/Nwosu-Josiah/Car-price-prediction
 cd Car-price-prediction
 2️⃣ Create and Activate a Virtual Environment
