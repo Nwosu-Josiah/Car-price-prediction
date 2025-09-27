@@ -8,12 +8,15 @@ import numpy as np
 @st.cache_data
 def load_data():
     file_id = "13oiR6gBt78RY_UaXefeIrqalKTw3M2xR"
-    url = f"https://drive.google.com/uc?id={file_id}"
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
     output = "datasets/raw_data_sample.csv"
-    gdown.download(url, output, quiet=False)
-    st.info("📂 Loading dataset from Google Drive...")
-    df = pd.read_csv(output, low_memory=False)
-    # Clean up columns
+    try:
+        gdown.download(url, output, quiet=False)
+        st.info("📂 Loading dataset from Google Drive...")
+        df = pd.read_csv(output, low_memory=False)
+    except Exception as e:
+        st.error(f"Error loading dataset: {e}")
+        st.stop()
 
     df.columns = df.columns.str.lower()
     df = df.loc[:, ~df.columns.str.contains('^unnamed')]
