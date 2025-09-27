@@ -1,19 +1,20 @@
 import streamlit as st
 import pandas as pd
 import xgboost as xgb
-import shap
 import matplotlib.pyplot as plt
 import joblib  
+import gdown
 import numpy as np
 @st.cache_data
 def load_data():
-    file_id = "1aBcD3EfGhIjKlMnOpQrStUvWxYz"
+    file_id = "13oiR6gBt78RY_UaXefeIrqalKTw3M2xR"
     url = f"https://drive.google.com/uc?id={file_id}"
-
+    output = "datasets/raw_data_sample.csv"
+    gdown.download(url, output, quiet=False)
     st.info("📂 Loading dataset from Google Drive...")
-    df = pd.read_csv(url, low_memory=False)
-
+    df
     # Clean up columns
+
     df.columns = df.columns.str.lower()
     df = df.loc[:, ~df.columns.str.contains('^unnamed')]
     return df
