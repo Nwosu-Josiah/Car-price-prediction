@@ -12,7 +12,7 @@ def load_data():
     output = "datasets/raw_data_sample.csv"
     gdown.download(url, output, quiet=False)
     st.info("📂 Loading dataset from Google Drive...")
-    df
+    df = pd.read_csv(output, low_memory=False)
     # Clean up columns
 
     df.columns = df.columns.str.lower()
