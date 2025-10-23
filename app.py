@@ -24,9 +24,9 @@ def load_data():
 df_raw = load_data()
 # Loading Model and Metadata
 model = xgb.Booster()
-model.load_model("models/model.json")
-preprocessor = joblib.load("models/preprocessor.pkl")
-feature_names = list(joblib.load("models/feature_names.pkl"))
+model.load_model("artifacts/model.json")
+preprocessor = joblib.load("artifacts/preprocessor.pkl")
+feature_names = list(joblib.load("artifacts/feature_names.pkl"))
 
 df_raw = df_raw.drop(columns=["Unnamed: 0"], errors='ignore')
 st.title("🚗 Car Price Prediction Dashboard")
