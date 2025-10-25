@@ -1,110 +1,171 @@
 import os
-from typing import Optional, Tuple, Dict, Any
-
+import joblib
 import pandas as pd
+import numpy as np
+import xgboost as xgb
+import optuna
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
-from src.data_preprocessing.preprocessor import DataPreprocessor
-from src.models.model_factory import get_model
-from src.monitoring.logger import get_logger
-
-logger = get_logger(__name__)
+from loguru import logger
 
 
-def load_dataset(csv_path: str, required_cols: Tuple[str, ...]) -> pd.DataFrame:
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"Dataset not found: {csv_path}")
-    df = pd.read_csv(csv_path)
-    missing = set(required_cols) - set(df.columns)
-    if missing:
-        raise ValueError(f"Missing required columns in dataset: {missing}")
-    return df
+class CarPriceTrainer:
+    def __init__(self, data_path: str , model_dir: str = "artifacts"):
+        self.data_path = data_path
+        self.model_dir = model_dir
+        self.model_path = os.path.join(model_dir, "model.json")
+        self.preprocessor_path = os.path.join(model_dir, "preprocessor.pkl")
+        os.makedirs(model_dir, exist_ok=True)
+        self.processor = None
+
+    def load_data(self):
+        """Load and prepare dataset."""
+        logger.info(f"Loading dataset from {self.data_path}")
+        df = pd.read_csv(self.data_path)
+
+        # Keep only relevant columns used by the API
+        relevant_features = [
+            "year",
+            "odometer",
+            "condition",
+            "fuel",
+            "transmission",
+            "manufacturer",
+            "price"
+        ]
+        available_cols = [col for col in relevant_features if col in df.columns]
+        df = df[available_cols].dropna(subset=["price"])
+        logger.info(f"Dataset shape after filtering: {df.shape}")
+        return df
+
+    def build_preprocessor(self):
+        numerical_features = ["year", "odometer"]
+        categorical_features = ["condition", "fuel", "transmission", "manufacturer"]
+
+        num_transformer = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler())
+        ])
+
+        cat_transformer = Pipeline([
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore"))
+        ])
+
+        preprocessor = ColumnTransformer([
+            ("num", num_transformer, numerical_features),
+            ("cat", cat_transformer, categorical_features)
+        ])
+
+        logger.info("Preprocessor built successfully.")
+        return preprocessor
+
+    def tune_hyperparameters(self, X_train, X_test, y_train, y_test):
+        
+        logger.info("Starting hyperparameter tuning with Optuna...")
+
+        X_train_processed = self.preprocessor.fit_transform(X_train)
+        X_test_processed = self.preprocessor.transform(X_test)
+
+        dtrain = xgb.DMatrix(X_train_processed, label=y_train)
+        dtest = xgb.DMatrix(X_test_processed, label=y_test)
+
+        def objective(trial):
+            params = {
+                "objective": "reg:squarederror",
+                "eval_metric": "rmse",
+                "eta": trial.suggest_float("eta", 0.01, 0.3, log=True),
+                "max_depth": trial.suggest_int("max_depth", 3, 10),
+                "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
+                "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+                "lambda": trial.suggest_float("lambda", 1e-3, 10.0, log=True),
+                "alpha": trial.suggest_float("alpha", 1e-3, 10.0, log=True),
+                "tree_method": "hist",
+                "seed": 42,
+            }
+
+            evals = [(dtrain, "train"), (dtest, "eval")]
+            model = xgb.train(
+                params=params,
+                dtrain=dtrain,
+                num_boost_round=200,
+                evals=evals,
+                early_stopping_rounds=20,
+                verbose_eval=False,
+            )
+            preds = model.predict(dtest)
+            rmse = np.sqrt(((preds - y_test) ** 2).mean())
+            return rmse
+
+        study = optuna.create_study(direction="minimize")
+        study.optimize(objective, n_trials=200, show_progress_bar=True)
+
+        logger.success(f"Best trial: {study.best_trial.number}, RMSE: {study.best_value:.4f}")
+        logger.success(f"Best hyperparameters: {study.best_params}")
+        return study.best_params
+    def train(self):
+        
+        df = self.load_data()
+        df["price_bin"] = pd.qcut(df["price"], q=10, duplicates="drop", labels=False)
+        X = df.drop(columns=["price"])
+        y = np.log1p(df["price"])
+        price_bins = df["price_bin"]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=price_bins, random_state=42)
+
+        # Build preprocessing pipeline
+        self.preprocessor = self.build_preprocessor()
+        best_params = self.tune_hyperparameters(X_train, X_test, y_train, y_test)
+        best_params.update({
+            "objective": "reg:squarederror",
+            "eval_metric": "rmse",
+            "tree_method": "hist",
+            "seed": 42
+        })
+        X_train_processed = self.preprocessor.fit_transform(X_train)
+        X_test_processed = self.preprocessor.transform(X_test)
+
+        # Convert to DMatrix
+        dtrain = xgb.DMatrix(X_train_processed, label=y_train)
+        dtest = xgb.DMatrix(X_test_processed, label=y_test)
 
 
-def train_model(
-    data_path: str = "datasets/raw_data_sampled.csv",
-    model_dir: str = "artifacts",
-    target_col: str = "price",
-    model_type: str = "xgboost",
-    test_size: float = 0.1,
-    random_state: int = 42,
-    num_boost_round: int = 100,
-    early_stopping_rounds: Optional[int] = 10,
-    eval_metric: str = "rmse",
-    train_params: Optional[Dict[str, Any]] = None,
-) -> None:
-    
-    os.makedirs(model_dir, exist_ok=True)
+        logger.info("Starting XGBoost training with best hyperparameters...")
+        evals = [(dtrain, "train"), (dtest, "eval")]
 
-    
-    numeric_feats = ["year", "mileage"]
-    categorical_feats = ["fuel_type", "transmission", "manufacturer", "condition"]
-    required_cols = tuple(numeric_feats + categorical_feats + [target_col])
+        model = xgb.train(
+            params=best_params,
+            dtrain=dtrain,
+            num_boost_round=500,
+            evals=evals,
+            early_stopping_rounds=30,
+            verbose_eval=50
+        )
 
-    logger.info("Loading dataset...")
-    df = load_dataset(data_path, required_cols)
+        logger.success("Training completed successfully.")
 
-    X = df[list(numeric_feats + categorical_feats)]
-    y = df[target_col]
+        # Save model and preprocessor
+        model.save_model(self.model_path)
+        joblib.dump(self.preprocessor, self.preprocessor_path)
 
-    logger.info("Building preprocessor and transforming data...")
-    preprocessor = DataPreprocessor()
-    X_processed = preprocessor.fit_transform(X)
+        logger.success(f"Model saved at: {self.model_path}")
+        logger.success(f"Preprocessor saved at: {self.preprocessor_path}")
 
-    # save preprocessor
-    preproc_path = os.path.join(model_dir, "preprocessor.pkl")
-    preprocessor.save(preproc_path)
-    logger.info(f"Preprocessor saved to {preproc_path}")
+        # Evaluate on test data
+        preds = model.predict(dtest)
+        preds_original = np.expm1(preds)
+        y_test_original = np.expm1(y_test)
+        rmse = np.sqrt(((preds_original - y_test_original) ** 2).mean())
+        r2 = 1 - (((preds_original - y_test_original) ** 2).sum() / ((y_test_original - y_test_original.mean()) ** 2).sum())
 
-    # train/validation split for xgboost's watchlist
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_processed, y, test_size=test_size, random_state=random_state
-    )
+        logger.info(f"Evaluation — RMSE: {rmse:.2f}, R²: {r2:.2f}")
+        return model, self.preprocessor, rmse, r2
 
-    # create dmatrix objects
-    import xgboost as xgb  
-    dtrain = xgb.DMatrix(X_train, label=y_train)
-    dval = xgb.DMatrix(X_val, label=y_val)
 
-    # model factory
-    logger.info("Instantiating model via factory...")
-    model_obj = get_model(model_type=model_type, model_dir=model_dir, **(train_params or {}))
-
-    params = {
-        "objective": "reg:squarederror",
-        "eval_metric": eval_metric,
-        "eta": 0.05,
-        "max_depth": 6,
-        "subsample": 0.8,
-        "colsample_bytree": 0.8,
-        "seed": random_state,
-    }
-    if train_params:
-        params.update(train_params)
-
-    watchlist = [(dtrain, "train"), (dval, "eval")]
-
-    logger.info("Starting xgboost training (low-level)...")
-    model = xgb.train(
-        params,
-        dtrain,
-        num_boost_round=num_boost_round,
-        evals=watchlist,
-        early_stopping_rounds=early_stopping_rounds,
-        verbose_eval=False,
-    )
-
-    # Save model using model_obj's save model path
-    model.save_model(os.path.join(model_dir, "xgb_model.json"))
-    logger.info(f"XGBoost model saved to {os.path.join(model_dir, 'xgb_model.json')}")
-
-    # Optionally allow model_obj to know about the trained booster for further wrappers
-    try:
-        model_obj.model = model
-        # If model_obj has save() semantics, call it to maintain API consistency
-        if hasattr(model_obj, "save"):
-            model_obj.save(os.path.join(model_dir, "model.pkl"))
-    except Exception:
-        # ignore optional step
-        pass
-
-    logger.info("Training completed successfully.")
+if __name__ == "__main__":
+    trainer = CarPriceTrainer(data_path="datasets/raw_data_sampled.csv")
+    trainer.train()

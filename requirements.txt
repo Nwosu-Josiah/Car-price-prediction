@@ -3,7 +3,6 @@ pandas
 numpy
 scikit-learn==1.6.1
 xgboost
-shap
 matplotlib
 joblib
 gdown
@@ -12,3 +11,6 @@ uvicorn
 pytest>=8.0.0
 httpx
 google-cloud-aiplatform
+loguru
+optuna
+gunicorn
