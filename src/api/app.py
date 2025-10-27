@@ -11,13 +11,13 @@ predictor = Predictor()
 
 class CarFeatures(BaseModel):
     year: int
-    mileage: float
+    odometer: float
     condition: str
-    fuel_type: str
+    fuel: str
     transmission: str
     manufacturer: str
-
-
+    model: str
+   
 @app.get("/health")
 def health_check():
     return {"status": "OK", "message": "API is running smoothly."}

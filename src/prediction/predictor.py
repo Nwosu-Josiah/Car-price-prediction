@@ -38,7 +38,7 @@ class Predictor:
             return path
 
     def preprocess_input(self, input_data: dict) -> pd.DataFrame:
-        expected_cols = ["year", "mileage", "condition", "fuel_type", "transmission", "manufacturer"]
+        expected_cols = ["year", "odometer", "condition", "fuel", "transmission", "manufacturer", "model"]
 
         # Validate and fill missing keys
         for col in expected_cols:
