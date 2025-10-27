@@ -9,7 +9,7 @@
 
 substitutions:
   _PROJECT_ID: "josiahs-project-475720"
-  _REGION: "us-central1"
+  _REGION: "us-east1"
   _REPOSITORY: "carprice-repo"       
   _SERVICE_NAME: "carprice-api"      
   _BUCKET_NAME: "carprice-artifacts" 
