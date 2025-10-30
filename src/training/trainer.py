@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 import optuna
+import json
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -34,6 +35,7 @@ class CarPriceTrainer:
             "fuel",
             "transmission",
             "manufacturer",
+            "model",
             "price"
         ]
         available_cols = [col for col in relevant_features if col in df.columns]
@@ -43,22 +45,22 @@ class CarPriceTrainer:
 
     def build_preprocessor(self):
         numerical_features = ["year", "odometer"]
-        categorical_features = ["condition", "fuel", "transmission", "manufacturer"]
+        categorical_features = ["condition", "fuel", "transmission", "manufacturer", "model"]
 
         num_transformer = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler())
+            ("scaler", StandardScaler(with_mean=False))
         ])
 
         cat_transformer = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore"))
+            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True, max_categories=50))
         ])
 
         preprocessor = ColumnTransformer([
             ("num", num_transformer, numerical_features),
             ("cat", cat_transformer, categorical_features)
-        ])
+        ], sparse_threshold=1.0)
 
         logger.info("Preprocessor built successfully.")
         return preprocessor
@@ -163,6 +165,12 @@ class CarPriceTrainer:
         r2 = 1 - (((preds_original - y_test_original) ** 2).sum() / ((y_test_original - y_test_original.mean()) ** 2).sum())
 
         logger.info(f"Evaluation — RMSE: {rmse:.2f}, R²: {r2:.2f}")
+        metrics_path = os.path.join(self.model_dir, "metrics.json")
+        metrics = {"rmse": float(rmse), "r2": float(r2)}
+        with open(metrics_path, "w") as f:
+            json.dump(metrics, f, indent=4)
+
+        logger.success(f"Metrics saved at: {metrics_path}")
         return model, self.preprocessor, rmse, r2
 
 
