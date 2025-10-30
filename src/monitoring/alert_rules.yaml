@@ -1,0 +1,29 @@
+groups:
+  - name: carprice-api-alerts
+    rules:
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected on carprice-api"
+          description: "95th percentile latency > 0.5s for the last 2 minutes."
+
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status!~"2.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "More than 5% of API requests are failing."
+
+      - alert: ServiceDown
+        expr: up{job="carprice-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Car Price API is down"
+          description: "Prometheus could not reach carprice-api for 1 minute."
