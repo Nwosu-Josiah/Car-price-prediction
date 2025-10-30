@@ -6,7 +6,7 @@ import xgboost as xgb
 from loguru import logger
 from google.cloud import storage  
 from pathlib import Path
-
+from scipy import sparse
 class Predictor:
     def __init__(self):
         self.model_path = os.getenv("MODEL_PATH", "artifacts/model.json")
@@ -53,6 +53,8 @@ class Predictor:
         try:
             input_df = self.preprocess_input(input_data)
             X_processed = self.preprocessor.transform(input_df)
+            if not sparse.issparse(X_processed):
+                X_processed = sparse.csr_matrix(X_processed)
             dmatrix = xgb.DMatrix(X_processed, nthread=2)
             log_pred = self.model.predict(dmatrix)
             prediction = np.expm1(log_pred[0])  # inverse of log1p

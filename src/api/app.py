@@ -24,10 +24,13 @@ def health_check():
 
 
 @app.post("/predict")
-def predict_price(car: CarFeatures):
+async def predict_price(car: CarFeatures):
     """Predict car price from input features."""
     try:
         input_data = car.dict()
+        for key, value in input_data.items():
+            if isinstance(value, str):
+                input_data[key] = value.strip().lower()
         logger.info(f"Received user input for prediction: {input_data}")
         prediction = predictor.predict(input_data)
         return {"predicted_price": round(prediction, 2)}
