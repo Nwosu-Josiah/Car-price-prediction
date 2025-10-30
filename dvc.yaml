@@ -15,11 +15,12 @@ stages:
     deps:
       - src/training/trainer.py
       - datasets/processed/train.csv
-      - artifacts/preprocessor.pkl
+      - artifacts/preprocessor.pkl  
     outs:
       - artifacts/model.json
     metrics:
-      - artifacts/metrics.json
+      - artifacts/metrics.json:
+          cache: false
 
   evaluate:
     cmd: python src/evaluation/evaluate.py
@@ -29,4 +30,5 @@ stages:
       - artifacts/preprocessor.pkl
       - datasets/processed/test.csv
     metrics:
-      - reports/metrics.json
+      - reports/metrics.json:
+          cache: false

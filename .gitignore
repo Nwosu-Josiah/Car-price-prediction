@@ -24,7 +24,7 @@ env/
 *.dvc.lock
 
 # --- Data & Models ---
-datasets/
+!datasets/
 artifacts/
 !datasets/README.md
 !artifacts/README.md
