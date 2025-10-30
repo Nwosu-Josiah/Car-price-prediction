@@ -1,0 +1,43 @@
+version: '1.0'
+description: >
+  Load testing configuration for Car Price Prediction API using k6.
+  Simulates realistic traffic patterns and measures response time, error rate, and throughput.
+
+config:
+  api_url: "https://carprice-api-375680962785-uc.a.run.app/predict"
+  virtual_users: 100        # concurrent users
+  ramp_up_duration: 30s     # time to scale up users
+  steady_duration: 1m       # test duration
+  requests_per_second: 10   # load rate
+
+scenarios:
+  constant_load:
+    executor: constant-arrival-rate
+    rate: ${requests_per_second}
+    timeUnit: "1s"
+    duration: ${steady_duration}
+    preAllocatedVUs: ${virtual_users}
+    exec: send_prediction
+
+metrics:
+  - name: http_req_duration
+    threshold: p(95)<500   # 95% of requests under 500ms
+  - name: http_req_failed
+    threshold: rate<0.05   # less than 5% failures allowed
+
+functions:
+  send_prediction:
+    method: POST
+    url: ${api_url}
+    headers:
+      Content-Type: application/json
+    body: |
+      {
+        "year": 2019,
+        "odometer": 42000,
+        "condition": "Good",
+        "fuel": "Gas",
+        "transmission": "Automatic",
+        "manufacturer": "Toyota",
+        "model": "highlander"
+      }
