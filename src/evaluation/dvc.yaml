@@ -1,0 +1,32 @@
+stages:
+  prepare_data:
+    cmd: python src/training/prepare_data.py
+    deps:
+      - src/training/prepare_data.py
+      - src/training/preprocessor.py
+      - datasets/raw_data_sampled.csv
+    outs:
+      - datasets/processed/train.csv
+      - datasets/processed/test.csv
+      - artifacts/preprocessor.pkl
+
+  train_model:
+    cmd: python src/training/trainer.py
+    deps:
+      - src/training/trainer.py
+      - datasets/processed/train.csv
+      - artifacts/preprocessor.pkl
+    outs:
+      - artifacts/model.json
+    metrics:
+      - artifacts/metrics.json
+
+  evaluate:
+    cmd: python src/evaluation/evaluate.py
+    deps:
+      - src/evaluation/evaluate.py
+      - artifacts/model.json
+      - artifacts/preprocessor.pkl
+      - datasets/processed/test.csv
+    metrics:
+      - reports/metrics.json
