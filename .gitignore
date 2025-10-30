@@ -1,0 +1,59 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.log
+*.json
+*.csv
+*.sqlite3
+
+# --- Environment & Dependency files ---
+.env
+.venv/
+venv/
+env/
+.envrc
+*.bak
+
+# --- DVC ---
+/.dvc/cache/
+/.dvc/tmp/
+/.dvc/config.local
+*.dvc.lock
+
+# --- Data & Models ---
+datasets/
+artifacts/
+!datasets/README.md
+!artifacts/README.md
+
+# --- Notebooks ---
+*.ipynb_checkpoints
+*.ipynb~
+
+# --- IDE / OS Files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Docker & Build ---
+*.egg-info
+build/
+dist/
+*.tar.gz
+*.whl
+docker-compose.override.yml
+
+# --- Cloud & Credentials ---
+cloudbuild.log
+credentials.json
+gcloud_key.json
+service-account.json
+
+# --- Logs ---
+logs/
+*.out
+*.err
