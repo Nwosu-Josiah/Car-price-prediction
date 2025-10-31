@@ -34,8 +34,8 @@ steps:
       - "-c"
       - |
         echo "=== Uploading model artifacts to GCS ==="
-        gsutil cp artifacts/model.json gs://${_BUCKET_NAME}/models/model.json
-        gsutil cp artifacts/preprocessor.pkl gs://${_BUCKET_NAME}/models/preprocessor.pkl
+        gsutil cp /workspace/artifacts/model.json gs://${_BUCKET_NAME}/models/model.json
+        gsutil cp /workspace/artifacts/preprocessor.pkl gs://${_BUCKET_NAME}/models/preprocessor.pkl
         echo "✅ Model and preprocessor uploaded to GCS."
 
   
