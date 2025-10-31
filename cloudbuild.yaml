@@ -23,7 +23,6 @@ steps:
       - |
         echo "=== Running unit tests ==="
         pip install -r requirements.txt
-        export PYTHONPATH=$PYTHONPATH:$(pwd)
         pytest -q || (echo "❌ Unit tests failed" && exit 1)
         echo "✅ Tests completed successfully."
 
