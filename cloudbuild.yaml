@@ -23,6 +23,7 @@ steps:
       - |
         echo "=== Running unit tests ==="
         pip install -r requirements.txt
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
         pytest -q || (echo "❌ Unit tests failed" && exit 1)
         echo "✅ Tests completed successfully."
 
@@ -79,6 +80,8 @@ steps:
         "2",
         "--concurrency",
         "80",
+        "--timeout",
+        "1800s",
         "--set-env-vars",
         "MODEL_PATH=gs://${_BUCKET_NAME}/models/model.json,PREPROCESSOR_PATH=gs://${_BUCKET_NAME}/models/preprocessor.pkl,LOG_LEVEL=info,GUNICORN_THREADS=2",
         "--set-env-vars",
