@@ -37,5 +37,5 @@ ENV PREPROCESSOR_PATH=artifacts/preprocessor.pkl
 ENV PYTHONUNBUFFERED=1
 
 
-CMD ["gunicorn", "src.api.app:app", "-k", "uvicorn.workers.UvicornWorker", \
+CMD ["gunicorn", "src.api.app:app", "-k", "uvicorn.workers.UvicornWorker","--host", "0.0.0.0", "--port", "8080", \
      "--config", "gunicorn_conf.py"]
