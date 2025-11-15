@@ -18,8 +18,8 @@ stages:
     outs:
     - path: artifacts/preprocessor.pkl
       hash: md5
-      md5: 3babd0346c2fe110143281856d924025
-      size: 591725
+      md5: 5681c81a4a8f5849a3c96f03fb71a9eb
+      size: 524009
     - path: datasets/processed/test.csv
       hash: md5
       md5: 92dbe2903c03badb3cafe9dee5d1b6aa
@@ -46,19 +46,19 @@ stages:
     outs:
     - path: artifacts/metrics.json
       hash: md5
-      md5: 18a1d76b67d901ac2b435c33726f13c2
-      size: 71
+      md5: b6e4b2cd338893fc145ae797dfe32951
+      size: 69
     - path: artifacts/model.json
       hash: md5
-      md5: 1594350fb9130ecd879cb623749a98b5
-      size: 8275579
+      md5: 3000164be752e17c84f30d3020f0848f
+      size: 9708101
   evaluate:
     cmd: python src/evaluation/evaluate.py
     deps:
     - path: artifacts/model.json
       hash: md5
-      md5: 1594350fb9130ecd879cb623749a98b5
-      size: 8275579
+      md5: 3000164be752e17c84f30d3020f0848f
+      size: 9708101
     - path: artifacts/preprocessor.pkl
       hash: md5
       md5: 5681c81a4a8f5849a3c96f03fb71a9eb
