@@ -36,8 +36,9 @@ steps:
       - |
         echo "=== Generating version tag ==="
         VERSION=$(date +"%Y%m%d-%H%M")-${SHORT_SHA}
-        echo "VERSION=${VERSION}" > version.txt
         echo "Generated version: ${VERSION}"
+
+        gcloud beta builds substitutions set _VERSION=${VERSION}
 
         echo "=== Uploading versioned artifacts ==="
         gsutil cp artifacts/model.json gs://${_BUCKET_NAME}/models/model-${VERSION}.json
@@ -106,3 +107,4 @@ images:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
