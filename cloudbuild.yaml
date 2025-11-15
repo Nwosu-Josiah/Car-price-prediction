@@ -63,28 +63,24 @@ steps:
     entrypoint: gcloud
     args:
       [
-        "run",
-        "deploy",
-        "${_SERVICE_NAME}",
-        "--image",
-        "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}",
-        "--region",
-        "${_REGION}",
-        "--platform",
-        "managed",
+        "run", "deploy", "${_SERVICE_NAME}",
+        "--image", "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}",
+        "--region", "${_REGION}",
+        "--platform", "managed",
         "--allow-unauthenticated",
-        "--memory",
-        "2Gi",
-        "--cpu",
-        "2",
-        "--concurrency",
-        "80",
-        "--timeout",
-        "1800s",
-        "--set-env-vars",
-        "MODEL_PATH=gs://${_BUCKET_NAME}/models/model.json,PREPROCESSOR_PATH=gs://${_BUCKET_NAME}/models/preprocessor.pkl,LOG_LEVEL=info,GUNICORN_THREADS=2",
-        "--set-env-vars",
-        "GUNICORN_WORKERS=3"
+        "--memory", "2Gi",
+        "--cpu", "2",
+        "--concurrency", "1",
+        "--timeout", "600s",
+
+        # XGBoost safe threading
+        "--set-env-vars", "OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,XGBOOST_NUM_THREADS=1",
+
+        # Gunicorn single-worker mode
+        "--set-env-vars", "GUNICORN_WORKERS=1,GUNICORN_THREADS=1",
+
+        # Correct model paths (download from GCS inside Predictor)
+        "--set-env-vars", "MODEL_PATH=gs://${_BUCKET_NAME}/models/model.json,PREPROCESSOR_PATH=gs://${_BUCKET_NAME}/models/preprocessor.pkl"
       ]
 
 images:
