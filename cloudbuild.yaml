@@ -1,20 +1,21 @@
-
-# Steps:
-# 1️⃣ Run unit tests
-# 2️⃣ Upload model artifacts to GCS
-# 3️⃣ Build container image
-# 4️⃣ Push to Artifact Registry
-# 5️⃣ Deploy to Cloud Run
+# ============================================================
+# Cloud Build Pipeline
+# 1. Run unit tests
+# 2. Auto-version + upload model artifacts to GCS (public)
+# 3. Build Docker image
+# 4. Push to Artifact Registry
+# 5. Deploy to Cloud Run with correct MODEL_PATH + PREPROCESSOR_PATH
 # ============================================================
 
 substitutions:
   _PROJECT_ID: "josiahs-project-475720"
   _REGION: "us-east1"
-  _REPOSITORY: "carprice-repo-east"       
-  _SERVICE_NAME: "carprice-api"      
-  _BUCKET_NAME: "carprice-artifacts" 
+  _REPOSITORY: "carprice-repo"
+  _SERVICE_NAME: "carprice-api"
+  _BUCKET_NAME: "carprice-artifacts"
 
 steps:
+  # 1️⃣ Run unit tests
   - name: "python:3.11"
     id: "run-tests"
     entrypoint: bash
@@ -26,30 +27,34 @@ steps:
         pytest -q || (echo "❌ Unit tests failed" && exit 1)
         echo "✅ Tests completed successfully."
 
-  - name: "python:3.11"
-    id: "dvc-pull"
-    entrypoint: bash
-    args:
-      - "-c"
-      - |
-        echo "=== Pulling artifacts from DVC remote ==="
-        pip install dvc[gcs]
-        dvc pull artifacts/model.json
-        dvc pull artifacts/preprocessor.pkl
-        echo "✅ DVC artifacts restored locally"
-
+  # 2️⃣ Auto-version + upload artifacts to GCS
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "upload-artifacts"
+    id: "upload-versioned-artifacts"
     entrypoint: bash
     args:
       - "-c"
       - |
-        echo "=== Uploading model artifacts to GCS ==="
-        gsutil cp artifacts/model.json gs://${_BUCKET_NAME}/models/model.json
-        gsutil cp artifacts/preprocessor.pkl gs://${_BUCKET_NAME}/models/preprocessor.pkl
-        echo "✅ Model and preprocessor uploaded to GCS."
+        echo "=== Generating version tag ==="
+        VERSION=$(date +"%Y%m%d-%H%M")-${SHORT_SHA}
+        echo "VERSION=${VERSION}" > version.txt
+        echo "Generated version: ${VERSION}"
 
-  
+        echo "=== Uploading versioned artifacts ==="
+        gsutil cp artifacts/model.json gs://${_BUCKET_NAME}/models/model-${VERSION}.json
+        gsutil cp artifacts/preprocessor.pkl gs://${_BUCKET_NAME}/models/preprocessor-${VERSION}.pkl
+
+        echo "=== Making files public (no service accounts needed) ==="
+        gsutil acl ch -u AllUsers:R gs://${_BUCKET_NAME}/models/model-${VERSION}.json
+        gsutil acl ch -u AllUsers:R gs://${_BUCKET_NAME}/models/preprocessor-${VERSION}.pkl
+
+        echo "MODEL_PUBLIC_URL=https://storage.googleapis.com/${_BUCKET_NAME}/models/model-${VERSION}.json" > model_url.txt
+        echo "PREPROCESSOR_PUBLIC_URL=https://storage.googleapis.com/${_BUCKET_NAME}/models/preprocessor-${VERSION}.pkl" > prep_url.txt
+
+        echo "Uploaded:"
+        cat model_url.txt
+        cat prep_url.txt
+
+  # 3️⃣ Build the image
   - name: "gcr.io/cloud-builders/docker"
     id: "build-image"
     args:
@@ -60,7 +65,7 @@ steps:
         "."
       ]
 
-  
+  # 4️⃣ Push the image
   - name: "gcr.io/cloud-builders/docker"
     id: "push-image"
     args:
@@ -69,30 +74,32 @@ steps:
         "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}"
       ]
 
+  # 5️⃣ Deploy to Cloud Run with NEW versioned model paths
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-cloud-run"
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      [
-        "run", "deploy", "${_SERVICE_NAME}",
-        "--image", "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}",
-        "--region", "${_REGION}",
-        "--platform", "managed",
-        "--allow-unauthenticated",
-        "--memory", "2Gi",
-        "--cpu", "2",
-        "--concurrency", "1",
-        "--timeout", "600s",
+      - "-c"
+      - |
+        MODEL_URL=$(cat model_url.txt | cut -d '=' -f2)
+        PREP_URL=$(cat prep_url.txt | cut -d '=' -f2)
 
-        # XGBoost safe threading
-        "--set-env-vars", "OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,XGBOOST_NUM_THREADS=1",
+        echo "Deploying with:"
+        echo "MODEL_PATH=${MODEL_URL}"
+        echo "PREPROCESSOR_PATH=${PREP_URL}"
 
-        # Gunicorn single-worker mode
-        "--set-env-vars", "GUNICORN_WORKERS=1,GUNICORN_THREADS=1",
-
-        # Correct model paths (download from GCS inside Predictor)
-        "--set-env-vars", "MODEL_PATH=gs://${_BUCKET_NAME}/models/model.json,PREPROCESSOR_PATH=gs://${_BUCKET_NAME}/models/preprocessor.pkl"
-      ]
+        gcloud run deploy ${_SERVICE_NAME} \
+          --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA} \
+          --region ${_REGION} \
+          --platform managed \
+          --allow-unauthenticated \
+          --memory 2Gi \
+          --cpu 2 \
+          --concurrency 1 \
+          --timeout 600s \
+          --set-env-vars OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,XGBOOST_NUM_THREADS=1 \
+          --set-env-vars GUNICORN_WORKERS=1,GUNICORN_THREADS=1 \
+          --set-env-vars MODEL_PATH=${MODEL_URL},PREPROCESSOR_PATH=${PREP_URL}
 
 images:
   - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}"
