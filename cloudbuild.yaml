@@ -26,7 +26,18 @@ steps:
         pytest -q || (echo "❌ Unit tests failed" && exit 1)
         echo "✅ Tests completed successfully."
 
-  
+  - name: "python:3.11"
+    id: "dvc-pull"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        echo "=== Pulling artifacts from DVC remote ==="
+        pip install dvc[gcs]
+        dvc pull artifacts/model.json
+        dvc pull artifacts/preprocessor.pkl
+        echo "✅ DVC artifacts restored locally"
+
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "upload-artifacts"
     entrypoint: bash
@@ -34,8 +45,8 @@ steps:
       - "-c"
       - |
         echo "=== Uploading model artifacts to GCS ==="
-        gsutil cp /workspace/artifacts/model.json gs://${_BUCKET_NAME}/models/model.json
-        gsutil cp /workspace/artifacts/preprocessor.pkl gs://${_BUCKET_NAME}/models/preprocessor.pkl
+        gsutil cp artifacts/model.json gs://${_BUCKET_NAME}/models/model.json
+        gsutil cp artifacts/preprocessor.pkl gs://${_BUCKET_NAME}/models/preprocessor.pkl
         echo "✅ Model and preprocessor uploaded to GCS."
 
   
