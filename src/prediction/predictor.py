@@ -11,8 +11,8 @@ from scipy import sparse
 
 class Predictor:
     def __init__(self):
-        self.model_path = os.getenv("MODEL_PATH", "artifacts/model.json")
-        self.preprocessor_path = os.getenv("PREPROCESSOR_PATH", "artifacts/preprocessor.pkl")
+        self.model_path = os.getenv("MODEL_PATH")
+        self.preprocessor_path = os.getenv("PREPROCESSOR_PATH")
 
         # Download GCS artifacts if needed
         self.model_local = self._get_local_copy(self.model_path)
@@ -28,7 +28,16 @@ class Predictor:
         logger.info("Model + preprocessor loaded successfully.")
 
     def _get_local_copy(self, path: str) -> str:
-        """Download GCS file to /tmp (Cloud Run safe)"""
+        """Download GCS file to /tmp — supports gs:// and https://storage.googleapis.com/ URLs."""
+
+        # Convert HTTPS URL to gs://
+        if path.startswith("https://storage.googleapis.com/"):
+            # Remove the domain
+            clean = path.replace("https://storage.googleapis.com/", "")
+            bucket, blob_path = clean.split("/", 1)
+            path = f"gs://{bucket}/{blob_path}"
+
+        # Handle gs:// normally
         if path.startswith("gs://"):
             logger.info(f"Downloading artifact from GCS: {path}")
             bucket_name, blob_path = path.replace("gs://", "").split("/", 1)
@@ -45,7 +54,9 @@ class Predictor:
             logger.success(f"Downloaded {blob_path} to {local_file}")
             return str(local_file)
 
+        # Local file path
         return path
+
 
     def preprocess_input(self, input_data: dict) -> pd.DataFrame:
         expected_cols = [
