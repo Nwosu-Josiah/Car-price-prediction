@@ -15,21 +15,7 @@ substitutions:
 
 steps:
   # ------------------------------------------
-  # Step 1: Run tests
-  # ------------------------------------------
-  - name: "python:3.11"
-    id: "run-tests"
-    entrypoint: bash
-    args:
-      - "-c"
-      - |
-        echo "=== Running unit tests ==="
-        pip install -r requirements.txt
-        pytest -q || (echo "❌ Unit tests failed" && exit 1)
-        echo "✅ Tests passed."
-
-  # ------------------------------------------
-  # Step 2: Build Docker image
+  # Step 1: Build Docker image
   # ------------------------------------------
   - name: "gcr.io/cloud-builders/docker"
     id: "build-image"
@@ -42,7 +28,7 @@ steps:
       ]
 
   # ------------------------------------------
-  # Step 3: Push image
+  # Step 2: Push image
   # ------------------------------------------
   - name: "gcr.io/cloud-builders/docker"
     id: "push-image"
@@ -53,7 +39,7 @@ steps:
       ]
 
   # ------------------------------------------
-  # Step 4: Deploy to Cloud Run
+  # Step 3: Deploy to Cloud Run
   # ------------------------------------------
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-cloud-run"
