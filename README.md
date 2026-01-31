@@ -273,8 +273,7 @@ gcloud run deploy carprice-api   --image us-east1-docker.pkg.dev/YOUR_PROJECT/ca
 
 ## 👨‍💻 Author
 
-**Josiah Nwosu**  
-Machine Learning Engineer   
+**Josiah Nwosu**     
 📧 Email: mwosujosiah20@gmail.com  
 🔗 GitHub: [Nwosu-Josiah](https://github.com/Nwosu-Josiah)
 
